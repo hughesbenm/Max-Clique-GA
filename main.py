@@ -5,8 +5,11 @@ import numpy as np
 
 def graph_from_adj(adj):
   G = nx.Graph()
+  for i in range(len(adj)):
+    G.add_node(i)
+  
   for i in range(len(adj)): 
-    for j in range(len(adj[0])): 
+    for j in range(len(adj[0])):
       if adj[i][j] == 1: 
           G.add_edge(i,j) 
   return G
@@ -36,9 +39,12 @@ def gen_graph(nodes, clique_size, edge_prob):
 # WRONG, NEED TO CONSIDER SUBGRAPH NOT FULL GRAPH
 def get_fitness(chromosome, nodes, G, experimental, k):
   list = chromosome_to_node_list(chromosome, nodes)
+
+  S = G.subgraph(list)
+
   fitness = 0
   for i in list:
-    fitness += G.degree[i]
+    fitness += S.degree[i]
   
   # Experimental Fitness
   # Subtraction If Over
@@ -56,6 +62,13 @@ def gen_chromosome(nodes):
       chromosome[i] = 1
   return chromosome
 
+def gen_population(pop_size, nodes):
+  pop = np.empty((pop_size, nodes, 1))
+
+  for i in range(pop_size):
+    pop[i] = gen_chromosome(nodes)
+  return pop
+
 def chromosome_to_node_list(chromosome, nodes):
   list = []
   for i in range(nodes):
@@ -63,21 +76,30 @@ def chromosome_to_node_list(chromosome, nodes):
       list.append(i)
   return list
 
+def SGA(nodes, k, edge_prob, pop_size):
+  G = gen_graph(NODES, K, EDGE_PROB)
+  pop = gen_population(pop_size, nodes)
+  for i in pop:
+    print(get_fitness(i, nodes, G, True, k))
+
 random.seed()
 
 NODES = 100
-K = 2
-EDGE_PROB = 0.45
+K = 5
+EDGE_PROB = 0.2
+POP_SIZE = 50
 
-G = gen_graph(NODES, K, EDGE_PROB)
+SGA(NODES, K, EDGE_PROB, POP_SIZE)
+
 
 chromosome = gen_chromosome(NODES)
 
 list = chromosome_to_node_list(chromosome, NODES)
 
-# nx.draw( G , with_labels=True) 
+# nx.draw(G, with_labels=True) 
 # plt.show() 
 # nx.draw(G.subgraph(list), with_labels=True)
 # plt.show()
-print("experimental fitness: ",  get_fitness(chromosome, NODES, G, True, K))
-print("normal fitness: ", get_fitness(chromosome, NODES, G, False, K))
+
+# print("experimental fitness: ",  get_fitness(chromosome, NODES, G, True, K))
+# print("normal fitness: ", get_fitness(chromosome, NODES, G, False, K))
