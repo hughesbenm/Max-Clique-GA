@@ -110,23 +110,34 @@ def find_elites(pop, nodes, num_elites, G, k):
   ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
   ranked_sorted = sorted(ranked, reverse=True)
   elites = []
-  print(fitnesses)
-  print(ranked)
-  print(ranked_sorted)
-  print(ranked.index(ranked_sorted[0]))
   for i in range(num_elites):
-    elites.append(pop[ranked.index(ranked_sorted[0])])
+    elites.append(pop[ranked.index(ranked_sorted[i])])
   return elites
+
+def check_for_clique(chromosome, nodes, G, k):
+  fitness = get_fitness(chromosome)
 
 def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate):
   G = gen_graph(nodes, k, edge_prob)
+
   pop = gen_population(pop_size, nodes)
+
   parents = rank_select(pop, pop_size, nodes, G, k, num_elites)
+
   children = uniform_cross(parents)
+
   mutated_children = [single_mutate(i, mutation_rate) for i in children]
+
   elites = find_elites(pop, nodes, num_elites, G, k)
-  next_pop = [i for i in elites].append(copy.deepcopy(mutated_children))
-  print(get_fitness(elites[i], nodes, G, k), )
+
+  next_pop = copy.deepcopy(pop)
+  for i in range(pop_size - num_elites):
+    next_pop[i] = mutated_children[i]
+  for i in range(num_elites):
+    next_pop[pop_size - i - 1] = elites[i]
+
+
+
 
 random.seed()
 
