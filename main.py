@@ -80,6 +80,7 @@ def chromosome_to_node_list(chromosome, nodes):
 # Takes in list of chromosomes, returns list of randomly selected parents
 def rank_select(pop, pop_size, nodes, G, k, elites):
   fitnesses = [get_fitness(i, nodes, G, k) for i in pop]
+  print(fitnesses)
   ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
   sum_ranks = sum(ranked)
   probabilities = [ranked[i] / sum_ranks for i in range(pop_size)]
@@ -99,28 +100,46 @@ def uniform_cross(parents):
         children[2 * i][j] = parents[2 * i + 1][j]
   return children
 
+def single_mutate(chromosome, mutation_rate):
+  if random.random() < mutation_rate:
+    rand_index = random.randint(0, len(chromosome) - 1)
+    chromosome[rand_index] = (chromosome[rand_index] + 3) % 2
+  return chromosome
 
-def SGA(nodes, k, edge_prob, pop_size, elites):
+def find_elites(pop, nodes, num_elites, G, k):
+  fitnesses = [get_fitness(i, nodes, G, k) for i in pop]
+  ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
+  ranked_sorted = fitnesses.sort(reverse=True)
+  elites = []
+  print(ranked)
+  for i in range(num_elites):
+    elites.append(ranked.index(i + 1))
+  return elites
+
+def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate):
   G = gen_graph(nodes, k, edge_prob)
   pop = gen_population(pop_size, nodes)
-  parents = rank_select(pop, pop_size, nodes, G, k, elites)
+  parents = rank_select(pop, pop_size, nodes, G, k, num_elites)
   children = uniform_cross(parents)
-
-
-
+  mutated_children = [single_mutate(i, mutation_rate) for i in children]
+  elites = find_elites(pop, nodes, num_elites, G, k)
+  next_pop = [i for i in elites].append(copy.deepcopy(mutated_children))
+  # print([get_fitness(i, nodes, G, k) for i in elites])
 
 random.seed()
 
-NODES = 5
-K = 3
+NODES = 100
+K = 17
 EDGE_PROB = 0.2
 POP_SIZE = 50
-ELITES = 2
+NUM_ELITES = 2
+MUTATION_RATE = 1
 
-SGA(NODES, K, EDGE_PROB, POP_SIZE, ELITES)
+SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE)
 
 
 chromosome = gen_chromosome(NODES)
+single_mutate(chromosome, MUTATION_RATE)
 
 list = chromosome_to_node_list(chromosome, NODES)
 
