@@ -80,7 +80,6 @@ def chromosome_to_node_list(chromosome, nodes):
 # Takes in list of chromosomes, returns list of randomly selected parents
 def rank_select(pop, pop_size, nodes, G, k, elites):
   fitnesses = [get_fitness(i, nodes, G, k) for i in pop]
-  print(fitnesses)
   ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
   sum_ranks = sum(ranked)
   probabilities = [ranked[i] / sum_ranks for i in range(pop_size)]
@@ -109,11 +108,14 @@ def single_mutate(chromosome, mutation_rate):
 def find_elites(pop, nodes, num_elites, G, k):
   fitnesses = [get_fitness(i, nodes, G, k) for i in pop]
   ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
-  ranked_sorted = fitnesses.sort(reverse=True)
+  ranked_sorted = sorted(ranked, reverse=True)
   elites = []
+  print(fitnesses)
   print(ranked)
+  print(ranked_sorted)
+  print(ranked.index(ranked_sorted[0]))
   for i in range(num_elites):
-    elites.append(ranked.index(i + 1))
+    elites.append(pop[ranked.index(ranked_sorted[0])])
   return elites
 
 def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate):
@@ -124,7 +126,7 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate):
   mutated_children = [single_mutate(i, mutation_rate) for i in children]
   elites = find_elites(pop, nodes, num_elites, G, k)
   next_pop = [i for i in elites].append(copy.deepcopy(mutated_children))
-  # print([get_fitness(i, nodes, G, k) for i in elites])
+  print(get_fitness(elites[i], nodes, G, k), )
 
 random.seed()
 
@@ -137,11 +139,6 @@ MUTATION_RATE = 1
 
 SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE)
 
-
-chromosome = gen_chromosome(NODES)
-single_mutate(chromosome, MUTATION_RATE)
-
-list = chromosome_to_node_list(chromosome, NODES)
 
 # nx.draw(G, with_labels=True) 
 # plt.show() 
