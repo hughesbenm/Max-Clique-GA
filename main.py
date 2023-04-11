@@ -1,3 +1,4 @@
+import copy
 import networkx as nx 
 import matplotlib.pyplot as plt 
 import random
@@ -76,28 +77,47 @@ def chromosome_to_node_list(chromosome, nodes):
       list.append(i)
   return list
 
-def rank_select(pop, pop_size, nodes, G, k):
-  wheel = np.zeros((pop_size, 1))
-  for i in pop:
-    wheel[0] = get_fitness(i, nodes, G, k)
+# Takes in list of chromosomes, returns list of randomly selected parents
+def rank_select(pop, pop_size, nodes, G, k, elites):
+  fitnesses = [get_fitness(i, nodes, G, k) for i in pop]
+  ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
+  sum_ranks = sum(ranked)
+  probabilities = [ranked[i] / sum_ranks for i in range(pop_size)]
+  parents = random.choices(pop, probabilities, k = pop_size - elites)
+  return parents
+
+def uniform_cross(parents):
+  children = copy.deepcopy(parents)
+  for i in range(int(len(parents)/2)):
+    for j in range(len(parents[0])):
+      rand = random.random()
+      if rand < 0.5:
+        children[2 * i][j] = parents[2 * i][j]
+        children[2 * i + 1][j] = parents[2 * i + 1][j]
+      else:
+        children[2 * i + 1][j] = parents[2 * i][j]
+        children[2 * i][j] = parents[2 * i + 1][j]
+  return children
 
 
-def SGA(nodes, k, edge_prob, pop_size):
-  G = gen_graph(NODES, K, EDGE_PROB)
+def SGA(nodes, k, edge_prob, pop_size, elites):
+  G = gen_graph(nodes, k, edge_prob)
   pop = gen_population(pop_size, nodes)
-  for i in pop:
-    print(get_fitness(i, nodes, G, k))
+  parents = rank_select(pop, pop_size, nodes, G, k, elites)
+  children = uniform_cross(parents)
+
 
 
 
 random.seed()
 
-NODES = 100
-K = 5
+NODES = 5
+K = 3
 EDGE_PROB = 0.2
 POP_SIZE = 50
+ELITES = 2
 
-SGA(NODES, K, EDGE_PROB, POP_SIZE)
+SGA(NODES, K, EDGE_PROB, POP_SIZE, ELITES)
 
 
 chromosome = gen_chromosome(NODES)
