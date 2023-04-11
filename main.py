@@ -37,7 +37,7 @@ def gen_graph(nodes, clique_size, edge_prob):
   return G
 
 # WRONG, NEED TO CONSIDER SUBGRAPH NOT FULL GRAPH
-def get_fitness(chromosome, nodes, G, experimental, k):
+def get_fitness(chromosome, nodes, G, k, experimental = False):
   list = chromosome_to_node_list(chromosome, nodes)
 
   S = G.subgraph(list)
@@ -76,11 +76,19 @@ def chromosome_to_node_list(chromosome, nodes):
       list.append(i)
   return list
 
+def rank_select(pop, pop_size, nodes, G, k):
+  wheel = np.zeros((pop_size, 1))
+  for i in pop:
+    wheel[0] = get_fitness(i, nodes, G, k)
+
+
 def SGA(nodes, k, edge_prob, pop_size):
   G = gen_graph(NODES, K, EDGE_PROB)
   pop = gen_population(pop_size, nodes)
   for i in pop:
-    print(get_fitness(i, nodes, G, True, k))
+    print(get_fitness(i, nodes, G, k))
+
+
 
 random.seed()
 
