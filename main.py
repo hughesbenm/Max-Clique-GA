@@ -38,22 +38,31 @@ def gen_graph(nodes, clique_size, edge_prob):
   return G
 
 # WRONG, NEED TO CONSIDER SUBGRAPH NOT FULL GRAPH
-def get_fitness(chromosome, G, k, experimental = True):
+# def get_fitness(chromosome, G, k, experimental = True):
+#   list = chromosome_to_node_list(chromosome)
+
+#   S = G.subgraph(list)
+
+#   fitness = S.size()
+  
+#   # Experimental Fitness
+#   # Subtraction If Over
+#   if (experimental):
+#     max_fitness = (k * (k - 1)) / 2
+#     if fitness > max_fitness:
+#       fitness = 2 * max_fitness - fitness
+
+#   return fitness
+
+def get_fitness(chromosome, G, k):
   list = chromosome_to_node_list(chromosome)
 
   S = G.subgraph(list)
 
   fitness = 0
-  for i in list:
-    fitness += S.degree[i]
-  
-  # Experimental Fitness
-  # Subtraction If Over
-  if (experimental):
-    max_fitness = (k * (k - 1)) / 2
-    if fitness > max_fitness:
-      fitness = 2 * max_fitness - fitness
 
+  for edge in S.edges:
+    fitness += (S.degree[edge[0]] * S.degree[edge[1]])
   return fitness
 
 def gen_chromosome(nodes):
@@ -114,39 +123,56 @@ def find_elites(pop, num_elites, G, k):
     elites.append(pop[ranked.index(ranked_sorted[i])])
   return elites
 
-def check_for_clique(chromosome, nodes, G, k):
-  fitness = get_fitness(chromosome)
+def check_for_clique(chromosome, G, k):
+  list = chromosome_to_node_list(chromosome)
+  S = G.subgraph(list)
 
-def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate):
+  good_degree = 0
+
+  for i in S.degree:
+    if i[0] >= k:
+      good_degree += 1
+  if good_degree < k:
+    return False
+  return True
+
+def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
   G = gen_graph(nodes, k, edge_prob)
 
   pop = gen_population(pop_size, nodes)
-  gens = 0
   
-  while gens < 1:
-    parents = rank_select(pop, G, k, num_elites)
+  for clique_size in range(1, 10):
+    print("looking for clique size ", clique_size)
+    current_gen = 0
 
-    children = uniform_cross(parents)
+    while current_gen < generations:
+      parents = rank_select(pop, G, clique_size, num_elites)
 
-    mutated_children = [single_mutate(i, mutation_rate) for i in children]
+      children = uniform_cross(parents)
 
-    elites = find_elites(pop, num_elites, G, k)
+      mutated_children = [single_mutate(i, mutation_rate) for i in children]
 
-    next_pop = copy.deepcopy(pop)
-    for i in range(pop_size - num_elites):
-      next_pop[i] = mutated_children[i]
-    for i in range(num_elites):
-      next_pop[pop_size - i - 1] = elites[i]
+      elites = find_elites(pop, num_elites, G, clique_size)
 
-    pop = next_pop
-    
-    print("gen ", gens, " best fitness: ", get_fitness(elites[0], G, k))
-    gens += 1
+      next_pop = copy.deepcopy(pop)
+      for i in range(pop_size - num_elites):
+        next_pop[i] = mutated_children[i]
+      for i in range(num_elites):
+        next_pop[pop_size - i - 1] = elites[i]
 
-    nx.draw(G, with_labels=True)
-    plt.show()
-    nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
-    plt.show()
+      pop = next_pop
+      
+      print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
+      current_gen += 1
+
+      # nx.draw(G, with_labels=True)
+      # plt.show()
+      nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
+      plt.show()
+      has_clique = check_for_clique(elites[0], G, clique_size)
+      print("Has Clique of ", clique_size, ": ", has_clique)
+      if has_clique:
+        break
 
 
 
@@ -159,14 +185,15 @@ EDGE_PROB = 0.2
 POP_SIZE = 50
 NUM_ELITES = 2
 MUTATION_RATE = 1
+GENERATIONS = 10
 
-# SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE)
+SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
 
-G = gen_graph(NODES, K, EDGE_PROB)
+# G = gen_graph(NODES, K, EDGE_PROB)
 
-chromo = gen_chromosome(NODES)
+# chromo = gen_chromosome(NODES)
 
-print(get_fitness(chromo, G, K))
+# print(get_fitness(chromo, G, K))
 
-nx.draw(G.subgraph(chromosome_to_node_list(chromo)), with_labels=True)
-plt.show()
+# nx.draw(G.subgraph(chromosome_to_node_list(chromo)), with_labels=True)
+# plt.show()
