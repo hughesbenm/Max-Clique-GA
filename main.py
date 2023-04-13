@@ -3,6 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt 
 import random
 import numpy as np
+import math
 
 def graph_from_adj(adj):
   G = nx.Graph()
@@ -54,16 +55,32 @@ def gen_graph(nodes, clique_size, edge_prob):
 
 #   return fitness
 
+# def get_fitness(chromosome, G, k):
+#   list = chromosome_to_node_list(chromosome)
+
+#   S = G.subgraph(list)
+
+#   fitness = 0
+
+#   for edge in S.edges:
+#     fitness += ((S.degree[edge[0]] - math.sqrt(k)) * (S.degree[edge[1]] - math.sqrt(k)))
+#   return fitness
+
 def get_fitness(chromosome, G, k):
-  list = chromosome_to_node_list(chromosome)
+  S = G.subgraph(chromosome_to_node_list(chromosome))
+  nodes = S.number_of_nodes()
+  edges = S.size()
+  max_edges = nodes * (nodes - 1) / 2
 
-  S = G.subgraph(list)
-
-  fitness = 0
-
-  for edge in S.edges:
-    fitness += (S.degree[edge[0]] * S.degree[edge[1]])
-  return fitness
+  edge_fitness = 0
+  if max_edges != 0:
+    edge_fitness = edges / max_edges
+  
+  node_fitness = nodes / k
+  if node_fitness > 1:
+    node_fitness = 2 - node_fitness
+  
+  return edge_fitness + node_fitness
 
 def gen_chromosome(nodes):
   chromosome = np.zeros((nodes, 1))
@@ -114,6 +131,19 @@ def single_mutate(chromosome, mutation_rate):
     chromosome[rand_index] = (chromosome[rand_index] + 3) % 2
   return chromosome
 
+def max_degree_mutate(chromosome, mutation_rate, G):
+  S = G.subgraph(chromosome_to_node_list(chromosome))
+
+  if random.random() < mutation_rate:
+    max_degree_index = 0
+    max_degree = 0
+    for i in range(len(chromosome)):
+      if S.degree[0][1] > max_degree:
+        max_degree = S.degree[0][1]
+        max_degree_index = i
+    chromosome[max_degree_index] = (chromosome[max_degree_index] + 3) % 2
+
+
 def find_elites(pop, num_elites, G, k):
   fitnesses = [get_fitness(i, G, k) for i in pop]
   ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
@@ -127,12 +157,9 @@ def check_for_clique(chromosome, G, k):
   list = chromosome_to_node_list(chromosome)
   S = G.subgraph(list)
 
-  good_degree = 0
-
-  for i in S.degree:
-    if i[0] >= k:
-      good_degree += 1
-  if good_degree < k:
+  if S.number_of_nodes() != k:
+    return False
+  if S.size() != ((k * (k - 1)) / 2):
     return False
   return True
 
@@ -141,7 +168,7 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
   pop = gen_population(pop_size, nodes)
   
-  for clique_size in range(1, 10):
+  for clique_size in range(2, k + 2):
     print("looking for clique size ", clique_size)
     current_gen = 0
 
@@ -150,7 +177,8 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       children = uniform_cross(parents)
 
-      mutated_children = [single_mutate(i, mutation_rate) for i in children]
+      # mutated_children = [single_mutate(i, mutation_rate) for i in children]
+      mutated_children = [max_degree_mutate(i, mutation_rate, G) for i in children]
 
       elites = find_elites(pop, num_elites, G, clique_size)
 
@@ -162,16 +190,17 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       pop = next_pop
       
-      print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
+      # print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
       current_gen += 1
 
       # nx.draw(G, with_labels=True)
       # plt.show()
-      nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
-      plt.show()
+      # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
+      # plt.show()
       has_clique = check_for_clique(elites[0], G, clique_size)
-      print("Has Clique of ", clique_size, ": ", has_clique)
       if has_clique:
+        print("Has Clique of ", clique_size)
+        print("Took ", current_gen, " generations")
         break
 
 
@@ -179,13 +208,13 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
 random.seed()
 
-NODES = 30
-K = 5
-EDGE_PROB = 0.2
-POP_SIZE = 50
-NUM_ELITES = 2
-MUTATION_RATE = 1
-GENERATIONS = 10
+NODES = 500
+K = 25
+EDGE_PROB = 0.75
+POP_SIZE = 100
+NUM_ELITES = 4
+MUTATION_RATE = 0.15
+GENERATIONS = 1000
 
 SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
 
