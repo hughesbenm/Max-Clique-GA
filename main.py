@@ -112,6 +112,32 @@ def rank_select(pop, G, k, elites):
   parents = random.choices(pop, probabilities, k = len(pop) - elites)
   return parents
 
+def roulette_select(pop, G, k, elites):
+  fitnesses = [get_fitness(i, G, k) for i in pop]
+  sum_fitnesses = sum(fitnesses)
+  probabilities = [fitnesses[i] / sum_fitnesses for i in range(len(pop))]
+  parents = random.choices(pop, probabilities, k = len(pop) - elites)
+  return parents
+
+def tournament_select(pop, G, k, elites, alpha):
+  parents = []
+  for i in range(len(pop - elites)):
+    first = random.randint(0, len(pop) - 1)
+    second = first
+    while second == first:
+      second = random.randint(0, len(pop) - 1)
+    if random.random() > alpha:
+      if get_fitness(pop[first], G, k) > get_fitness(pop[second], G, k):
+        parents.append(pop[first])
+      else:
+        parents.append(pop[second])
+    else:
+      if get_fitness(pop[first], G, k) > get_fitness(pop[second], G, k):
+        parents.append(pop[second])
+      else:
+        parents.append(pop[first])
+  return parents
+
 def uniform_cross(parents):
   children = copy.deepcopy(parents)
   for i in range(int(len(parents)/2)):
@@ -123,6 +149,20 @@ def uniform_cross(parents):
       else:
         children[2 * i + 1][j] = parents[2 * i][j]
         children[2 * i][j] = parents[2 * i + 1][j]
+  return children
+
+def point_cross(parents):
+  children = copy.deepcopy(parents)
+
+  for i in range(int(len(parents)/2)):
+    for j in range(len(parents[0])):
+      pivot = random.randint(0, len(parents[0] - 1))
+      if j < pivot:
+        children[2 * i][j] = parents[2 * i][j]
+        children[2 * i + 1][j] = parents[2 * i + 1][j]
+      else:
+        children[2 * i][j] = parents[2 * i + 1][j]
+        children[2 * i + 1][j] = parents[2 * i][j]
   return children
 
 def random_single(chromosome, mutation_rate):
@@ -178,19 +218,24 @@ def check_for_clique(chromosome, G, k):
     return False
   return True
 
-def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
+def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
   G = gen_graph(nodes, k, edge_prob)
 
   pop = gen_population(pop_size, nodes)
+
+  total_gens = 0
   
-  for clique_size in range(2, k + 2):
+  for clique_size in range(3, nodes):
     print("looking for clique size ", clique_size)
     current_gen = 0
 
     while current_gen < generations:
-      parents = rank_select(pop, G, clique_size, num_elites)
+      # parents = rank_select(pop, G, clique_size, num_elites)
+      # parents = roulette_select(pop, G, clique_size, num_elites)
+      parents = tournament_select(pop, G, clique_size, num_elites, tournament_alpha)
 
-      children = uniform_cross(parents)
+      # children = uniform_cross(parents)
+      children = point_cross(parents)
 
       mutated_children = [random_single(i, mutation_rate) for i in children]
       # mutated_children = [fit_single(i, mutation_rate, G, k) for i in children]
@@ -221,9 +266,15 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       has_clique = check_for_clique(elites[0], G, clique_size)
       if has_clique:
+        total_gens += current_gen
         print("Has Clique of ", clique_size)
         print("Took ", current_gen, " generations")
         break
+    if current_gen >= generations:
+      print("Highest Clique Guranteed: ", k)
+      print("Highest Clique Found: ", clique_size - 1)
+      print("It took ", total_gens, " generations to get that clique")
+      break
 
 
 
@@ -231,15 +282,16 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 random.seed()
 
 
-NODES = 200
-K = 50
-EDGE_PROB = 0.4
+NODES = 100
+K = 17
+EDGE_PROB = 0.25
 POP_SIZE = 50
-NUM_ELITES = 1
-MUTATION_RATE = 0.5
+NUM_ELITES = 2
+MUTATION_RATE = 0.15
 GENERATIONS = 1000
+ALPHA = 0.05
 
-SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
+SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, ALPHA)
 
 # G = gen_graph(NODES, K, EDGE_PROB)
 
