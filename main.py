@@ -80,7 +80,7 @@ def get_fitness(chromosome, G, k):
   if node_fitness > 1:
     node_fitness = 2 - node_fitness
   
-  return edge_fitness + node_fitness
+  return edge_fitness + 2 * node_fitness
 
 def gen_chromosome(nodes):
   chromosome = np.zeros((nodes, 1))
@@ -125,26 +125,39 @@ def uniform_cross(parents):
         children[2 * i][j] = parents[2 * i + 1][j]
   return children
 
-def single_mutate(chromosome, mutation_rate):
+def random_single(chromosome, mutation_rate):
   if random.random() < mutation_rate:
     rand_index = random.randint(0, len(chromosome) - 1)
     chromosome[rand_index] = (chromosome[rand_index] + 3) % 2
   return chromosome
 
-def max_degree_mutate(chromosome, mutation_rate, G):
+def fit_single(chromosome, mutation_rate, G, k):
   if random.random() < mutation_rate:
-    if random.random() < 0.5:
-      max_degree_node = 0
-      max_degree = 0
-      for i in G.degree:
-        if i[1] > max_degree:
-          max_degree = i[1]
-          max_degree_node = i[0]
+    present_nodes = chromosome_to_node_list(chromosome)
+    S = G.subgraph(present_nodes)
+    num_nodes = S.number_of_nodes()
+    rand_miss = random_missing(chromosome)
+    rand_pres = random_present(chromosome)
+    if num_nodes <= k:
+      chromosome[rand_miss] = 1
+    elif num_nodes >= k:
+      chromosome[rand_pres] = 0
+  return chromosome
 
-      chromosome[max_degree_node] = (chromosome[max_degree_node] + 3) % 2
-    rand_index = random.randint(0, len(chromosome) - 1)
-    chromosome[rand_index] = (chromosome[rand_index] + 3) % 2
+def random_present(chromosome):
+  present_nodes = chromosome_to_node_list(chromosome)
+  if len(present_nodes) < 1:
+    return 0
+  return present_nodes[random.randint(0, len(present_nodes) - 1)]
 
+def random_missing(chromosome):
+  missing_nodes = []
+  for i in range(len(chromosome)):
+    if chromosome[i] == 0:
+      missing_nodes.append(i)
+  if len(missing_nodes) < 1:
+    return 0
+  return missing_nodes[random.randint(0, len(missing_nodes) - 1)]
 
 def find_elites(pop, num_elites, G, k):
   fitnesses = [get_fitness(i, G, k) for i in pop]
@@ -179,8 +192,8 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       children = uniform_cross(parents)
 
-      mutated_children = [single_mutate(i, mutation_rate) for i in children]
-      # mutated_children = [max_degree_mutate(i, mutation_rate, G) for i in children]
+      # mutated_children = [random_single(i, mutation_rate) for i in children]
+      mutated_children = [fit_single(i, mutation_rate, G, k) for i in children]
 
       elites = find_elites(pop, num_elites, G, clique_size)
 
@@ -194,10 +207,15 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
       
       current_gen += 1
 
-      # nx.draw(G, with_labels=True)
+      # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
       # plt.show()
-      if current_gen % 10 == 0:
+      # nx.draw(G.subgraph(chromosome_to_node_list(fit_single(elites[0], 1, G, k))), with_labels=True)
+      # plt.show()
+
+      if current_gen % 50 == 0:
         print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
+        # print(*elites[0])
+        # print(*elites[1])
         # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
         # plt.show()
 
@@ -212,15 +230,19 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
 random.seed()
 
-NODES = 200
-K = random.randint(10, 50)
+
+NODES = random.randint(30, 150)
+K = 5
 EDGE_PROB = 0.4
 POP_SIZE = 100
 NUM_ELITES = 4
 MUTATION_RATE = 0.15
 GENERATIONS = 1000
+RAND_K = random.randint(5, int(NODES / 4))
 
-SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
+SGA(NODES, RAND_K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
+
+print(RAND_K)
 
 # G = gen_graph(NODES, K, EDGE_PROB)
 
@@ -229,7 +251,7 @@ SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
 # nx.draw(G.subgraph(chromosome_to_node_list(chromo)), with_labels=True)
 # plt.show() 
 
-# max_degree_mutate(chromo, 1, G)
+# fit_single(chromo, 1, G, K)
 
 # nx.draw(G.subgraph(chromosome_to_node_list(chromo)), with_labels=True)
 # plt.show()
