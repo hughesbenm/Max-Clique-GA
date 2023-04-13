@@ -132,16 +132,18 @@ def single_mutate(chromosome, mutation_rate):
   return chromosome
 
 def max_degree_mutate(chromosome, mutation_rate, G):
-  S = G.subgraph(chromosome_to_node_list(chromosome))
-
   if random.random() < mutation_rate:
-    max_degree_index = 0
-    max_degree = 0
-    for i in range(len(chromosome)):
-      if S.degree[0][1] > max_degree:
-        max_degree = S.degree[0][1]
-        max_degree_index = i
-    chromosome[max_degree_index] = (chromosome[max_degree_index] + 3) % 2
+    if random.random() < 0.5:
+      max_degree_node = 0
+      max_degree = 0
+      for i in G.degree:
+        if i[1] > max_degree:
+          max_degree = i[1]
+          max_degree_node = i[0]
+
+      chromosome[max_degree_node] = (chromosome[max_degree_node] + 3) % 2
+    rand_index = random.randint(0, len(chromosome) - 1)
+    chromosome[rand_index] = (chromosome[rand_index] + 3) % 2
 
 
 def find_elites(pop, num_elites, G, k):
@@ -177,8 +179,8 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       children = uniform_cross(parents)
 
-      # mutated_children = [single_mutate(i, mutation_rate) for i in children]
-      mutated_children = [max_degree_mutate(i, mutation_rate, G) for i in children]
+      mutated_children = [single_mutate(i, mutation_rate) for i in children]
+      # mutated_children = [max_degree_mutate(i, mutation_rate, G) for i in children]
 
       elites = find_elites(pop, num_elites, G, clique_size)
 
@@ -190,13 +192,15 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       pop = next_pop
       
-      # print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
       current_gen += 1
 
       # nx.draw(G, with_labels=True)
       # plt.show()
-      # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
-      # plt.show()
+      if current_gen % 10 == 0:
+        print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
+        # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
+        # plt.show()
+
       has_clique = check_for_clique(elites[0], G, clique_size)
       if has_clique:
         print("Has Clique of ", clique_size)
@@ -208,9 +212,9 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
 random.seed()
 
-NODES = 500
-K = 25
-EDGE_PROB = 0.75
+NODES = 200
+K = random.randint(10, 50)
+EDGE_PROB = 0.4
 POP_SIZE = 100
 NUM_ELITES = 4
 MUTATION_RATE = 0.15
@@ -222,7 +226,10 @@ SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
 
 # chromo = gen_chromosome(NODES)
 
-# print(get_fitness(chromo, G, K))
+# nx.draw(G.subgraph(chromosome_to_node_list(chromo)), with_labels=True)
+# plt.show() 
+
+# max_degree_mutate(chromo, 1, G)
 
 # nx.draw(G.subgraph(chromosome_to_node_list(chromo)), with_labels=True)
 # plt.show()
