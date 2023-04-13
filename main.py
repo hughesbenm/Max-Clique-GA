@@ -192,8 +192,8 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 
       children = uniform_cross(parents)
 
-      # mutated_children = [random_single(i, mutation_rate) for i in children]
-      mutated_children = [fit_single(i, mutation_rate, G, k) for i in children]
+      mutated_children = [random_single(i, mutation_rate) for i in children]
+      # mutated_children = [fit_single(i, mutation_rate, G, k) for i in children]
 
       elites = find_elites(pop, num_elites, G, clique_size)
 
@@ -231,18 +231,15 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations):
 random.seed()
 
 
-NODES = random.randint(30, 150)
-K = 5
+NODES = 200
+K = 50
 EDGE_PROB = 0.4
-POP_SIZE = 100
-NUM_ELITES = 4
-MUTATION_RATE = 0.15
+POP_SIZE = 50
+NUM_ELITES = 1
+MUTATION_RATE = 0.5
 GENERATIONS = 1000
-RAND_K = random.randint(5, int(NODES / 4))
 
-SGA(NODES, RAND_K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
-
-print(RAND_K)
+SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS)
 
 # G = gen_graph(NODES, K, EDGE_PROB)
 
