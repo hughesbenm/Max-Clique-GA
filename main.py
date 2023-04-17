@@ -38,49 +38,32 @@ def gen_graph(nodes, clique_size, edge_prob):
 
   return G
 
-# WRONG, NEED TO CONSIDER SUBGRAPH NOT FULL GRAPH
-# def get_fitness(chromosome, G, k, experimental = True):
-#   list = chromosome_to_node_list(chromosome)
-
-#   S = G.subgraph(list)
-
-#   fitness = S.size()
-  
-#   # Experimental Fitness
-#   # Subtraction If Over
-#   if (experimental):
-#     max_fitness = (k * (k - 1)) / 2
-#     if fitness > max_fitness:
-#       fitness = 2 * max_fitness - fitness
-
-#   return fitness
-
-# def get_fitness(chromosome, G, k):
-#   list = chromosome_to_node_list(chromosome)
-
-#   S = G.subgraph(list)
-
-#   fitness = 0
-
-#   for edge in S.edges:
-#     fitness += ((S.degree[edge[0]] - math.sqrt(k)) * (S.degree[edge[1]] - math.sqrt(k)))
-#   return fitness
-
 def get_fitness(chromosome, G, k):
+  # S = G.subgraph(chromosome_to_node_list(chromosome))
+  # nodes = S.number_of_nodes()
+  # edges = S.size()
+  # max_edges = nodes * (nodes - 1) / 2
+
+  # edge_fitness = 0
+  # if max_edges != 0:
+  #   edge_fitness = edges / max_edges
+  
+  # node_fitness = nodes / k
+  # if node_fitness > 1:
+  #   node_fitness = 2 - node_fitness
+  
+  # return edge_fitness + 2 * node_fitness
   S = G.subgraph(chromosome_to_node_list(chromosome))
   nodes = S.number_of_nodes()
   edges = S.size()
-  max_edges = nodes * (nodes - 1) / 2
-
-  edge_fitness = 0
-  if max_edges != 0:
-    edge_fitness = edges / max_edges
-  
-  node_fitness = nodes / k
-  if node_fitness > 1:
-    node_fitness = 2 - node_fitness
-  
-  return edge_fitness + 2 * node_fitness
+  if nodes == 0:
+    return 0
+  fitness = edges / (nodes * (nodes - 1) / 2)
+  # if fitness == 1.0:
+  #   nx.draw(S, with_labels=True)
+  #   plt.show()
+  #   print(nodes)
+  return fitness
 
 def gen_chromosome(nodes):
   chromosome = np.zeros((nodes, 1))
@@ -218,7 +201,7 @@ def check_for_clique(chromosome, G, k):
     return False
   return True
 
-def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
+def GA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
   G = gen_graph(nodes, k, edge_prob)
 
   pop = gen_population(pop_size, nodes)
@@ -257,12 +240,12 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, t
       # nx.draw(G.subgraph(chromosome_to_node_list(fit_single(elites[0], 1, G, k))), with_labels=True)
       # plt.show()
 
-      if current_gen % 50 == 0:
+      if current_gen % 1 == 0:
         print("gen ", current_gen, " best fitness: ", get_fitness(elites[0], G, clique_size))
         # print(*elites[0])
         # print(*elites[1])
-        # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
-        # plt.show()
+        nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
+        plt.show()
 
       has_clique = check_for_clique(elites[0], G, clique_size)
       if has_clique:
@@ -276,6 +259,13 @@ def SGA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, t
       print("It took ", total_gens, " generations to get that clique")
       break
 
+def SA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
+  G = gen_graph(nodes, k, edge_prob)
+
+  chromosome = gen_chromosome(nodes)
+
+
+  return False
 
 
 
@@ -284,14 +274,18 @@ random.seed()
 
 NODES = 100
 K = 17
-EDGE_PROB = 0.25
+EDGE_PROB = 0.1
 POP_SIZE = 50
 NUM_ELITES = 2
 MUTATION_RATE = 0.15
 GENERATIONS = 1000
-ALPHA = 0.05
+TOURNAMENT_ALPHA = 0.05
+INITIAL_TEMPERATURE = 100
+ANNEALING_ALPHA = 0.98
+ANNEALING_BETA = 1.01
 
-SGA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, ALPHA)
+GA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA)
+SA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA, INITIAL_TEMPERATURE, ANNEALING_ALPHA, ANNEALING_BETA)
 
 # G = gen_graph(NODES, K, EDGE_PROB)
 
