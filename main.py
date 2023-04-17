@@ -53,16 +53,13 @@ def get_fitness(chromosome, G, k):
   #   node_fitness = 2 - node_fitness
   
   # return edge_fitness + 2 * node_fitness
+
   S = G.subgraph(chromosome_to_node_list(chromosome))
   nodes = S.number_of_nodes()
   edges = S.size()
   if nodes == 0:
     return 0
   fitness = edges / (nodes * (nodes - 1) / 2)
-  # if fitness == 1.0:
-  #   nx.draw(S, with_labels=True)
-  #   plt.show()
-  #   print(nodes)
   return fitness
 
 def gen_chromosome(nodes):
@@ -149,10 +146,11 @@ def point_cross(parents):
   return children
 
 def random_single(chromosome, mutation_rate):
+  new_chromosome = copy.deepcopy(chromosome)
   if random.random() < mutation_rate:
-    rand_index = random.randint(0, len(chromosome) - 1)
-    chromosome[rand_index] = (chromosome[rand_index] + 3) % 2
-  return chromosome
+    rand_index = random.randint(0, len(new_chromosome) - 1)
+    new_chromosome[rand_index] = (new_chromosome[rand_index] + 3) % 2
+  return new_chromosome
 
 def fit_single(chromosome, mutation_rate, G, k):
   if random.random() < mutation_rate:
@@ -259,11 +257,34 @@ def GA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, to
       print("It took ", total_gens, " generations to get that clique")
       break
 
-def SA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
+def SA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha, init_temp, alpha, beta):
   G = gen_graph(nodes, k, edge_prob)
 
   chromosome = gen_chromosome(nodes)
+  temperature = init_temp
 
+  iterations = 0
+
+  while iterations < 100:
+    old = get_fitness(chromosome, G, k)
+    new_chromosome = random_single(chromosome, 1)
+    new = get_fitness(new_chromosome, G, k)
+    # print("diff: ", new - old)
+    # print("quotient: ", (old - new) / temperature)
+    print("e: ", math.exp((new - old) / temperature))
+    if new > old:
+      chromosome = copy.deepcopy(new_chromosome)
+      print("better")
+    elif random.random() < math.exp((new - old) / temperature):
+      chromosome = copy.deepcopy(new_chromosome)
+      print("random")
+    else:
+      print("same")
+    temperature *= alpha
+    print("fit: ", get_fitness(chromosome, G, k))
+    print("temp: ", temperature)
+    # print(get_fitness(new_chromosome, G, k))
+    iterations += 1
 
   return False
 
@@ -280,11 +301,11 @@ NUM_ELITES = 2
 MUTATION_RATE = 0.15
 GENERATIONS = 1000
 TOURNAMENT_ALPHA = 0.05
-INITIAL_TEMPERATURE = 100
+INITIAL_TEMPERATURE = 0.01
 ANNEALING_ALPHA = 0.98
 ANNEALING_BETA = 1.01
 
-GA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA)
+# GA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA)
 SA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA, INITIAL_TEMPERATURE, ANNEALING_ALPHA, ANNEALING_BETA)
 
 # G = gen_graph(NODES, K, EDGE_PROB)
