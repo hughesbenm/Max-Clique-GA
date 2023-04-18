@@ -62,8 +62,8 @@ def get_fitness(chromosome, G, k):
   completeness = edges / (nodes * (nodes - 1) / 2)
   enough_nodes = nodes / k
   if enough_nodes > 1:
-    enough_nodes = 2 - (nodes / k)
-  fitness = (2 * completeness + enough_nodes) / 3
+    enough_nodes = 1
+  fitness = (completeness + enough_nodes) / 2
   return fitness
 
   # S = G.subgraph(chromosome_to_node_list(chromosome))
@@ -164,18 +164,13 @@ def random_single(chromosome, mutation_rate):
     new_chromosome[rand_index] = (new_chromosome[rand_index] + 3) % 2
   return new_chromosome
 
-def fit_single(chromosome, mutation_rate, G, k):
-  if random.random() < mutation_rate:
-    present_nodes = chromosome_to_node_list(chromosome)
-    S = G.subgraph(present_nodes)
-    num_nodes = S.number_of_nodes()
-    rand_miss = random_missing(chromosome)
-    rand_pres = random_present(chromosome)
-    if num_nodes <= k:
-      chromosome[rand_miss] = 1
-    elif num_nodes >= k:
-      chromosome[rand_pres] = 0
-  return chromosome
+def random_multi(chromosome, mutation_rate):
+  new_chromosome = copy.deepcopy(chromosome)
+  for i in range(random.randint(1, 5)):
+    if random.random() < mutation_rate:
+      rand_index = random.randint(0, len(new_chromosome) - 1)
+      new_chromosome[rand_index] = (new_chromosome[rand_index] + 3) % 2
+  return new_chromosome
 
 def random_present(chromosome):
   present_nodes = chromosome_to_node_list(chromosome)
@@ -205,11 +200,12 @@ def check_for_clique(chromosome, G, k):
   list = chromosome_to_node_list(chromosome)
   S = G.subgraph(list)
 
-  if S.number_of_nodes() != k:
-    return False
-  if S.size() != ((k * (k - 1)) / 2):
-    return False
-  return True
+  nodes = S.number_of_nodes()
+  if S.size() == ((nodes * (nodes - 1)) / 2) and nodes >= k:
+    # nx.draw(S, with_labels=True)
+    # plt.show()
+    return nodes
+  return -1
 
 def GA(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
   G = gen_graph(nodes, k, edge_prob)
@@ -274,15 +270,15 @@ def SA(nodes, k, edge_prob, generations, init_temp, iterations, alpha, beta):
 
   chromosome = gen_chromosome(nodes)
   temperature = init_temp
-
+  current_clique = 3
   e = 0
-
-  for i in range(generations):
+  current_gen = 0
+  while current_gen < generations:
     curr_iteration = 1
     while curr_iteration < iterations:
-      old = get_fitness(chromosome, G, k)
-      new_chromosome = random_single(chromosome, 1)
-      new = get_fitness(new_chromosome, G, k)
+      old = get_fitness(chromosome, G, current_clique)
+      new_chromosome = random_multi(chromosome, 1)
+      new = get_fitness(new_chromosome, G, current_clique)
       quotient = (new - old) / temperature
       if quotient > 200 or quotient < -200:
         e = 0
@@ -294,71 +290,83 @@ def SA(nodes, k, edge_prob, generations, init_temp, iterations, alpha, beta):
       elif random.random() < e:
         chromosome = copy.deepcopy(new_chromosome)
 
-      if check_for_clique(chromosome, G, k):
-        break
+      found_clique = check_for_clique(chromosome, G, current_clique)
 
+      if found_clique >= current_clique:
+        print("Found clique of ", found_clique)
+        print("Took ", current_gen, " generations")
+        current_clique = found_clique + 1
+        current_gen = 0
+        break
+      
       curr_iteration *= beta
 
-    if check_for_clique(chromosome, G, k):
-      print("Simulated Annealing Outer Loops: ", i)
-      break
-    print("Current temp: ", temperature, "Current fitness: ", get_fitness(chromosome, G, k))
+    current_gen += 1
+    print("Current temp: ", temperature, "Current fitness: ", get_fitness(chromosome, G, k), "Current generation: ", current_gen)
     temperature *= alpha
-  nx.draw(G.subgraph(chromosome_to_node_list(chromosome)), with_labels=True)
-  plt.show()
-  return False
+
+  print("Largest Clique Found: ", current_clique - 1)
+  print("Largest Clique Guranteed: ", k)
+  return current_clique - 1
 
 def HC(nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
   G = gen_graph(nodes, k, edge_prob)
 
   chromosome = gen_chromosome(nodes)
-  iterations = 0
-  current_gen = 0
   current_clique = 3
-
+  current_gen = 0
+  found_clique = -1
   while current_gen < generations:
+    current_gen = 0
 
     while current_gen < generations:
       old = get_fitness(chromosome, G, current_clique)
-      new_chromosome = random_single(chromosome, 1)
+      new_chromosome = random_multi(chromosome, 1)
       new = get_fitness(new_chromosome, G, current_clique)
+
       if new > old:
         chromosome = copy.deepcopy(new_chromosome)
 
-      if check_for_clique(chromosome, G, current_clique):
-        print("Found clique of ", current_clique)
+      found_clique = check_for_clique(chromosome, G, current_clique)
+
+      if found_clique >= current_clique:
+        print("Found clique of ", found_clique)
         print("Took ", current_gen, " generations")
+        current_clique = found_clique + 1
         break
-      print("current fitness: ", get_fitness(chromosome, G, current_clique))
-      if get_fitness(chromosome, G, current_clique) == 0.5:
-        nx.draw(G.subgraph(chromosome_to_node_list(chromosome)), with_labels=True)
-        plt.show()
+      
+      if current_gen % 50 == 0:
+        print("Current fitness: ", get_fitness(chromosome, G, current_clique), "Current generation: ", current_gen)
       current_gen += 1
-    current_clique += 1
-  print("What")
-  return False
+  
+  print("Largest Clique Found: ", current_clique - 1)
+  print("Largest Clique Guranteed: ", k)
+  return current_clique - 1
 
 
 
 random.seed()
 
 
-NODES = 200
-K = 34
-EDGE_PROB = 0.1
+NODES = 100
+K = 6
+EDGE_PROB = 0.6
 POP_SIZE = 50
 NUM_ELITES = 2
 MUTATION_RATE = 0.15
-GENERATIONS = 1000
+GENERATIONS = 2000
+HC_GENERATIONS = 10000
 TOURNAMENT_ALPHA = 0.05
-INITIAL_TEMPERATURE = 10
-ANNEALING_ALPHA = 0.9
-ANNEALING_BETA = 1.01
+
+SA_GENERATIONS = 100
+INITIAL_TEMPERATURE = 5
+ANNEALING_ALPHA = 0.85
+ANNEALING_BETA = 1.05
 ITERATIONS = 100
 
-# GA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA)
-# SA(NODES, K, EDGE_PROB, GENERATIONS, INITIAL_TEMPERATURE, ITERATIONS, ANNEALING_ALPHA, ANNEALING_BETA)
-HC(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, 50000, TOURNAMENT_ALPHA)
+# gene_clique = GA(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GENERATIONS, TOURNAMENT_ALPHA)
+simu_clique = SA(NODES, K, EDGE_PROB, SA_GENERATIONS, INITIAL_TEMPERATURE, ITERATIONS, ANNEALING_ALPHA, ANNEALING_BETA)
+# hill_clique = HC(NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, HC_GENERATIONS, TOURNAMENT_ALPHA)
 
 # G = gen_graph(NODES, K, EDGE_PROB)
 
