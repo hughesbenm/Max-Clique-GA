@@ -244,8 +244,8 @@ def GA(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations,
     
     current_gen += 1
 
-    nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
-    plt.show()
+    # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
+    # plt.show()
     # nx.draw(G.subgraph(chromosome_to_node_list(fit_single(elites[0], 1, G, k))), with_labels=True)
     # plt.show()
 
@@ -352,9 +352,9 @@ def HC(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations,
 random.seed()
 
 
-NODES = 50
-K = 5
-EDGE_PROB = 0.1
+NODES = 100
+K = 17
+EDGE_PROB = 0.25
 POP_SIZE = 50
 NUM_ELITES = 2
 MUTATION_RATE = 0.15
