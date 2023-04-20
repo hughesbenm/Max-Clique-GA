@@ -40,21 +40,6 @@ def gen_graph(nodes, clique_size, edge_prob):
   return G
 
 def get_fitness(chromosome, G, k):
-  # S = G.subgraph(chromosome_to_node_list(chromosome))
-  # nodes = S.number_of_nodes()
-  # edges = S.size()
-  # max_edges = nodes * (nodes - 1) / 2
-
-  # edge_fitness = 0
-  # if max_edges != 0:
-  #   edge_fitness = edges / max_edges
-  
-  # node_fitness = nodes / k
-  # if node_fitness > 1:
-  #   node_fitness = 2 - node_fitness
-  
-  # return edge_fitness + 2 * node_fitness
-
   S = G.subgraph(chromosome_to_node_list(chromosome))
   nodes = S.number_of_nodes()
   edges = S.size()
@@ -69,14 +54,6 @@ def get_fitness(chromosome, G, k):
     enough_nodes = 1
   fitness = (completeness + enough_nodes) / 2
   return fitness
-
-  # S = G.subgraph(chromosome_to_node_list(chromosome))
-  # nodes = S.number_of_nodes()
-  # edges = S.size()
-  # if nodes == 0:
-  #   return 0
-  # fitness = edges / (nodes * (nodes - 1) / 2)
-  # return fitness
 
 def gen_chromosome(nodes):
   chromosome = np.zeros((nodes, 1))
@@ -99,7 +76,6 @@ def chromosome_to_node_list(chromosome):
       list.append(i)
   return list
 
-# Takes in list of chromosomes, returns list of randomly selected parents
 def rank_select(pop, G, k, elites):
   fitnesses = [get_fitness(i, G, k) for i in pop]
   ranked = [sorted(fitnesses).index(i) + 1 for i in fitnesses]
@@ -206,12 +182,10 @@ def check_for_clique(chromosome, G, k):
 
   nodes = S.number_of_nodes()
   if S.size() == ((nodes * (nodes - 1)) / 2) and nodes >= k:
-    # nx.draw(S, with_labels=True)
-    # plt.show()
     return nodes
   return -1
 
-def GA(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
+def GA(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha, select, cross, mutate):
   print("Starting Generational Genetic Algorithm")
   start_time = time.perf_counter()
   end_time = 0
@@ -222,15 +196,22 @@ def GA(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations,
   current_gen = 0
   current_clique = 3
   while current_gen < generations:
-    # parents = rank_select(pop, G, clique_size, num_elites)
-    # parents = roulette_select(pop, G, clique_size, num_elites)
-    parents = tournament_select(pop, G, current_clique, num_elites, tournament_alpha)
+    if select == TOURNEY:
+      parents = tournament_select(pop, G, current_clique, num_elites, tournament_alpha)
+    elif select == RANK:
+      parents = rank_select(pop, G, current_clique, num_elites)
+    elif select == ROULETTE:
+      parents = roulette_select(pop, G, current_clique, num_elites)
+      
+    if cross == POINT:
+      children = point_cross(parents)
+    elif cross == UNIFORM:
+      children = uniform_cross(parents)
 
-    # children = uniform_cross(parents)
-    children = point_cross(parents)
-
-    mutated_children = [random_multi(i, mutation_rate) for i in children]
-    # mutated_children = [fit_single(i, mutation_rate, G, k) for i in children]
+    if mutate == MULTI:
+      mutated_children = [random_multi(i, mutation_rate) for i in children]
+    elif mutate == SINGLE:
+      mutated_children = [random_single(i, mutation_rate) for i in children]
 
     elites = find_elites(pop, num_elites, G, current_clique)
 
@@ -244,24 +225,22 @@ def GA(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations,
     
     current_gen += 1
 
-    # nx.draw(G.subgraph(chromosome_to_node_list(elites[0])), with_labels=True)
-    # plt.show()
-    # nx.draw(G.subgraph(chromosome_to_node_list(fit_single(elites[0], 1, G, k))), with_labels=True)
-    # plt.show()
-
     found_clique = check_for_clique(elites[0], G, current_clique)
     if found_clique >= current_clique:
         print("Found clique of ", found_clique, " after ", current_gen, " generations")
         current_clique = found_clique + 1
         current_gen = 0
         end_time = time.perf_counter()
+        if found_clique == k:
+          break
     
   print("Highest Clique Guranteed: ", k)
   print("Highest Clique Found: ", current_clique - 1)
   print("Took ", end_time - start_time, " seconds")
-  return current_clique - 1
+  time_diff  = end_time - start_time
+  return current_clique - 1, time_diff
 
-def SA(G, nodes, k, edge_prob, generations, init_temp, iterations, alpha, beta):
+def SA(G, nodes, k, edge_prob, generations, init_temp, iterations, alpha, beta, mutate):
   print("Starting Simulated Annealing Algorithm")
   start_time = time.perf_counter()
   end_time = 0
@@ -275,7 +254,10 @@ def SA(G, nodes, k, edge_prob, generations, init_temp, iterations, alpha, beta):
     curr_iteration = 1
     while curr_iteration < iterations:
       old = get_fitness(chromosome, G, current_clique)
-      new_chromosome = random_multi(chromosome, 1)
+      if mutate == SINGLE:
+        new_chromosome = random_single(chromosome, 1)
+      elif mutate == MULTI:
+        new_chromosome = random_multi(chromosome, 1)
       new = get_fitness(new_chromosome, G, current_clique)
       quotient = (new - old) / temperature
       if quotient > 200 or quotient < -200:
@@ -295,20 +277,21 @@ def SA(G, nodes, k, edge_prob, generations, init_temp, iterations, alpha, beta):
         current_clique = found_clique + 1
         current_gen = 0
         end_time = time.perf_counter()
+        temperature = init_temp
         break
       
       curr_iteration *= beta
 
     current_gen += 1
-    # print("Current temp: ", temperature, "Current fitness: ", get_fitness(chromosome, G, k), "Current generation: ", current_gen)
     temperature *= alpha
 
   print("Largest Clique Found: ", current_clique - 1)
   print("Largest Clique Guranteed: ", k)
   print("Took ", end_time - start_time, " seconds")
-  return current_clique - 1
+  time_diff  = end_time - start_time
+  return current_clique - 1, time_diff
 
-def HC(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha):
+def HC(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations, tournament_alpha, mutate):
   print("Starting Hill CLimbing Algorithm")
   start_time = time.perf_counter()
   end_time = 0
@@ -323,7 +306,10 @@ def HC(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations,
 
     while current_gen < generations:
       old = get_fitness(chromosome, G, current_clique)
-      new_chromosome = random_multi(chromosome, 1)
+      if mutate == SINGLE:
+        new_chromosome = random_single(chromosome, 1)
+      elif mutate == MULTI:
+        new_chromosome = random_multi(chromosome, 1)
       new = get_fitness(new_chromosome, G, current_clique)
 
       if new > old:
@@ -333,36 +319,45 @@ def HC(G, nodes, k, edge_prob, pop_size, num_elites, mutation_rate, generations,
 
       if found_clique >= current_clique:
         print("Found clique of ", found_clique, " after ", current_gen, " generations")
-        # print("Took ", current_gen, " generations")
         current_clique = found_clique + 1
         end_time = time.perf_counter()
         break
-      
-      # if current_gen % 50 == 0:
-        # print("Current fitness: ", get_fitness(chromosome, G, current_clique), "Current generation: ", current_gen)
+
       current_gen += 1
   
   print("Largest Clique Found: ", current_clique - 1)
   print("Largest Clique Guranteed: ", k)
   print("Took ", end_time - start_time, " seconds")
-  return current_clique - 1
+  time_diff  = end_time - start_time
+  return current_clique - 1, time_diff
 
 
 
 random.seed()
 
+TOURNEY = 0
+RANK = 1
+ROULETTE = 2
 
-NODES = 100
-K = 17
-EDGE_PROB = 0.25
+POINT = 0
+UNIFORM = 1
+
+SINGLE = 0
+MULTI = 1
+
+NODES = 200
+K = 40
+EDGE_PROB = 0.75
+
 POP_SIZE = 50
 NUM_ELITES = 2
+
 MUTATION_RATE = 0.15
-GA_GENERATIONS = 200
+GA_GENERATIONS = 500
+SA_GENERATIONS = 100
 HC_GENERATIONS = 10000
 TOURNAMENT_ALPHA = 0.05
 
-SA_GENERATIONS = 100
 INITIAL_TEMPERATURE = 5
 ANNEALING_ALPHA = 0.85
 ANNEALING_BETA = 1.05
@@ -370,6 +365,26 @@ ITERATIONS = 100
 
 G = gen_graph(NODES, K, EDGE_PROB)
 
-gene_clique = GA(G, NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GA_GENERATIONS, TOURNAMENT_ALPHA)
-simu_clique = SA(G, NODES, K, EDGE_PROB, SA_GENERATIONS, INITIAL_TEMPERATURE, ITERATIONS, ANNEALING_ALPHA, ANNEALING_BETA)
-hill_clique = HC(G, NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, HC_GENERATIONS, TOURNAMENT_ALPHA)
+print("\nTotal Nodes: ", NODES)
+print("Guranteed Clique Size: ", K)
+print("Edge Probabilty: ", EDGE_PROB)
+print("\nNumber of Elites: ", NUM_ELITES)
+print("Mutation Rate: ", MUTATION_RATE)
+print("Population Size: ", POP_SIZE)
+print("GA Generations: ", GA_GENERATIONS)
+print("SA Generations: ", SA_GENERATIONS)
+print("HC Generations: ", HC_GENERATIONS)
+print("Alpha: ", ANNEALING_ALPHA)
+print("Beta: ", ANNEALING_BETA)
+
+gene_results = GA(G, NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, GA_GENERATIONS, TOURNAMENT_ALPHA, RANK, UNIFORM, SINGLE)
+
+print("GA Found Clique of Size ", gene_results[0], " and took ", gene_results[1], " seconds")
+
+simu_results = SA(G, NODES, K, EDGE_PROB, SA_GENERATIONS, INITIAL_TEMPERATURE, ITERATIONS, ANNEALING_ALPHA, ANNEALING_BETA, SINGLE)
+
+print("SA Found Clique of Size ", simu_results[0], " and took ", simu_results[1], " seconds")
+
+hill_results = HC(G, NODES, K, EDGE_PROB, POP_SIZE, NUM_ELITES, MUTATION_RATE, HC_GENERATIONS, TOURNAMENT_ALPHA, SINGLE)
+
+print("HC Found Clique of Size ", hill_results[0], " and took ", hill_results[1], " seconds")
